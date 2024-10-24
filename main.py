@@ -4,17 +4,17 @@ import plotly.express as px
 import matplotlib.pyplot as plt
 
 # Fungsi untuk membuat grafik pemakaian listrik dalam sepuluh hari terakhir
-def buat_grafik_kwh(column_name, nilai_rata2, judul):
+def buat_grafik_kwh(df, column_name, nilai_rata2, judul, axis_limit = 0.01):
     # Membuat grafik batang
     fig, ax = plt.subplots(figsize=(10, 6))
 
     # Menentukan nilai maksimum, minimum, dan tanggal terbaru
-    max_value = df_10_hari[column_name].max()
-    min_value = df_10_hari[column_name].min()
-    latest_date = df_10_hari['Tanggal'].max()
+    max_value = df[column_name].max()
+    min_value = df[column_name].min()
+    latest_date = df['Tanggal'].max()
     
     colors = []
-    for index, row in df_10_hari.iterrows():
+    for index, row in df.iterrows():
         if row['Tanggal'] == latest_date:
             colors.append('turquoise')  # Warna untuk tanggal terbaru
         elif row[column_name] == max_value:
@@ -24,7 +24,7 @@ def buat_grafik_kwh(column_name, nilai_rata2, judul):
         else:
             colors.append('lightgray')  # Warna untuk batang lainnya            
 
-    bars = ax.bar(df_10_hari['Tanggal'], df_10_hari[column_name], color=colors)
+    bars = ax.bar(df['Tanggal'], df[column_name], color=colors)
 
     # Menambahkan garis horizontal putus-putus
     ax.axhline(y=nilai_rata2, color='black', linestyle='--') 
@@ -33,14 +33,14 @@ def buat_grafik_kwh(column_name, nilai_rata2, judul):
     #bars[0].set_color('cyan')
     
     # Mengatur posisi tick label di tengah batang
-    ax.set_xticks(df_10_hari['Tanggal'])
-    ax.set_xticklabels(df_10_hari['Tanggal'].dt.strftime('%Y-%m-%d'), rotation=90, ha='center')
+    ax.set_xticks(df['Tanggal'])
+    ax.set_xticklabels(df['Tanggal'].dt.strftime('%Y-%m-%d'), rotation=90, ha='center')
     
     # Menghitung batas sumbu y
-    min_value = df_10_hari[column_name].min()
-    max_value = df_10_hari[column_name].max()
-    y_min = min_value - 0.01 * min_value
-    y_max = max_value + 0.01 * max_value
+    min_value = df[column_name].min()
+    max_value = df[column_name].max()
+    y_min = min_value - axis_limit * min_value
+    y_max = max_value + axis_limit * max_value
 
     # Mengatur batas sumbu y
     ax.set_ylim(y_min, y_max)
@@ -65,16 +65,55 @@ def buat_grafik_kwh(column_name, nilai_rata2, judul):
     </p>
     """, unsafe_allow_html=True)
 
+def hitungDataDitampilkan(df, tanggal_awal, tanggal_akhir):
+    # Menyaring data untuk sepuluh hari terakhir
+    df_10_hari = df[(df['Tanggal'] >= tanggal_awal) & (df['Tanggal'] <= tanggal_akhir)]
+    #st.write(df)
+    #st.write(df_10_hari)
+    # Hitung rata-rata untuk setiap kolom, kecuali kolom 'Tanggal'
+    mean_values = df_10_hari.drop(columns=["Tanggal"]).mean()
+    # Bulatkan setiap nilai rata-rata ke dua desimal dan buat dictionary
+    dict_rata2 = {key: round(value, 2) for key, value in mean_values.items()}
+    # Menambahkan kolom 'Tanggal' kembali ke dictionary tanpa perubahan
+    dict_rata2['Tanggal'] = df_10_hari['Tanggal'].tolist()
+    # Tampilkan dictionary menggunakan Streamlit
+    #st.write(dict_rata2)
+
+    
+    # Menampilkan data sesuai dengan tanggal yang dipilih
+    # Filter dataframe berdasarkan tanggal tertentu
+    df_filtered = df[df["Tanggal"] == tanggal_akhir]
+    # Buat dictionary dari data yang difilter
+    dict_data_tanggal = df_filtered.drop(columns=["Tanggal"]).iloc[0].to_dict()
+    # Tampilkan dictionary menggunakan Streamlit
+    #st.write(dict_data_tanggal)
+
+    # Mencari nilai untuk satu hari sebelum tanggal_dipilih
+    tanggal_sebelumnya = tanggal_akhir - pd.Timedelta(days=1)
+    # Filter dataframe berdasarkan tanggal tertentu
+    df_filtered = df[df["Tanggal"] == tanggal_sebelumnya]
+    # Buat dictionary dari data yang difilter
+    dict_data_tanggal_sebelumnya = df_filtered.drop(columns=["Tanggal"]).iloc[0].to_dict()
+    # Tampilkan dictionary menggunakan Streamlit
+    #st.write(dict_data_tanggal_sebelumnya)
+
+    #mencari delta value
+    # Membuat dictionary dict_c dengan key yang sama dan value adalah hasil pengurangan value dict_A dengan value dict_B
+    dict_delta = {key: round(dict_data_tanggal[key] - dict_data_tanggal_sebelumnya[key],2) for key in dict_data_tanggal}
+    # Tampilkan dictionary dict_c menggunakan Streamlit
+    #st.write(dict_delta)
+    
+    return df_10_hari, dict_rata2, dict_data_tanggal, dict_data_tanggal_sebelumnya, dict_delta
 
 # Load dataset
 
 # Load lectricity dataset
-df = pd.read_csv('data.csv', delimiter=';')
-df.drop(columns=['Unnamed: 14'], inplace=True)
+elec_df = pd.read_csv('data.csv', delimiter=';')
+elec_df.drop(columns=['Unnamed: 14'], inplace=True)
 # Mengubah kolom 'Tanggal' menjadi tipe datetime
-df['Tanggal'] = pd.to_datetime(df['Tanggal']) + pd.DateOffset(hours=8)
+elec_df['Tanggal'] = pd.to_datetime(elec_df['Tanggal']) + pd.DateOffset(hours=8)
 # Mengurutkan dataframe berdasarkan kolom 'Tanggal' secara descending
-df = df.sort_values(by='Tanggal', ascending=False)
+elec_df = elec_df.sort_values(by='Tanggal', ascending=False)
 # Mengkonversi kolom 'PLN Meter' dan kolom lainnya ke float
 # List of columns to be converted
 columns_to_convert = [
@@ -84,7 +123,9 @@ columns_to_convert = [
 ]
 # Loop untuk mengkonversi semua kolom
 for col in columns_to_convert:
-    df[col] = df[col].str.replace(',', '.').astype(float)
+    elec_df[col] = elec_df[col].str.replace(',', '.').astype(float)
+
+
 
 # Load Production dataset
 prod_df = pd.read_csv('product.csv', delimiter=';')
@@ -104,29 +145,26 @@ for col in columns_to_convert:
     prod_df[col] = prod_df[col].str.replace(',', '.').astype(float)
 
 # Mengambil kolom 'Tanggal' dan memasukkannya ke dalam list 'tanggal_pengukuran'
-tanggal_pengukuran = df['Tanggal'].tolist()
+tanggal_pengukuran = elec_df['Tanggal'].tolist()
+tanggal_dipilih = tanggal_pengukuran[0]
 
 # User tool
 admin_user = False
 general_user = False
+name = 'Guest'
 dict_user = {'anggoro' : 'password01' ,'rahul':'password02','siska':'password03'}
 dict_name = {'anggoro' : 'Anggoro Yudho Nuswantoro' ,'rahul': 'Rahul Bankar','siska':'Siska Rahmawati'}
 
 # Menset page layout
 #st.set_page_config(layout="wide")
 
-# Sidebar
+#################################
+# SIDE BAR
+#################################
 with st.sidebar:
-    st.sidebar.image('LogoAPF.png')
-    st.header('Pilihan')
-    tanggal_dipilih = st.selectbox('Pilihan tanggal:', tanggal_pengukuran)
-    
-    # Menentukan rentang tanggal untuk sepuluh hari terakhir
-    tanggal_awal = tanggal_dipilih - pd.Timedelta(days=9)
-    tanggal_akhir = tanggal_dipilih
-
-    name = st.text_input("Nama Anda")
-    secret_code = st.text_input("secret code Anda", type="password")
+    st.header('User Authentification and Authorizaton')
+    name = st.text_input("Username")
+    secret_code = st.text_input("Password", type="password")
     try:
         correct_secret_code = dict_user[name]
     except Exception as e:
@@ -146,256 +184,326 @@ with st.sidebar:
         else:
             admin_user = False
             general_user = False
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button('Log in'):
+            pass
+    with col2:
+        if st.button('Log out'):
+            admin_user = False
+            general_user = False
 
-    if st.button('Log out'):
-        admin_user = False
-        general_user = False
+    st.markdown("""<hr style="border:1px solid gray">""", unsafe_allow_html=True)
+    
+
+#################################
+# MAIN PAGE
+#################################
+
+col1, col2 = st.columns([3,1])
+with col1:
+    st.title('PT Asia Pacific Fiber Tbk')
+with col2:
+    st.image('LogoAPF.png', use_column_width=True)
 
 if admin_user or general_user:
-    st.markdown("Selamat datang " + dict_name[name])
-    st.title('PT Asia Pacific Fiber Tbk')
-    
+
+    # Memilih tanggal
+    col1, col2 = st.columns([3,1])
+    with col1:
+        # Welcome greeting
+        st.markdown("Welcome " + dict_name[name])
+        st.markdown("Please choose a date : ")
+    with col2:
+        tanggal_dipilih = st.selectbox('Date :', tanggal_pengukuran, key="tanggal")
+    # Menentukan rentang tanggal untuk sepuluh hari terakhir
+    tanggal_awal = tanggal_dipilih - pd.Timedelta(days=9)
+    tanggal_akhir = tanggal_dipilih
+
     # Tab untuk memilih dashboard
     tabElec, tabProduct  = st.tabs(["Electricity", "Product"])
-    with tabProduct:
-        comment = '''
-        st.markdown("## Dashboard produksi Harian")
-        # Menampilkan tanggal
-        st.metric(label="Tanggal", value=tanggal_dipilih.strftime('%Y-%m-%d'))
-        st.write(prod_df)
-        # Menyaring data untuk sepuluh hari terakhir
-        prod_df_10_hari = prod_df[(df['Tanggal'] >= tanggal_awal) & (prod_df['Tanggal'] <= tanggal_akhir)]
-        
-        # Menghitung rata-rata untuk sepuluh hari terakhir
-        nilai_SP4_rata2 = prod_df_10_hari['SP4'].mean()
 
-        st.write(tanggal_dipilih)
-        
-        # Menampilkan data sesuai dengan tanggal yang dipilih
-        nilai_SP4 = prod_df.loc[prod_df['Tanggal'] == tanggal_dipilih, 'SP4'].values[0]
-        
-        # Mencari nilai untuk satu hari sebelum tanggal_dipilih
-        tanggal_sebelumnya = tanggal_dipilih - pd.Timedelta(days=1)
-        nilai_SP4_sebelumnya = prod_df.loc[prod_df['Tanggal'] == tanggal_sebelumnya, 'SP4'].values[0]
-        
-        #mencari delta value
-        delta_SP4 = round(nilai_SP4 - nilai_SP4_sebelumnya, 2)
-
-        col1, col2, col3, col4 = st.columns(4)
-        with col1:
-            st.metric(label='SP 4', value=nilai_SP4, delta = delta_SP4) '''
-    
+    #######################
+    # TAB ELEC
+    #######################
     with tabElec:
-        st.markdown("## Dashboard Pemakaian Listrik Harian")
+        col1, col2 = st.columns([3,1])
+        with col1:
+            st.markdown("## Daily Electricity Dashboard")
+        with col2:    
+            # Menampilkan tanggal
+            st.metric(label="Date", value=tanggal_dipilih.strftime('%d-%m-%Y'))
+
+        st.markdown("Values are shown in MWh (Megawatthour), unless it is stated differently explicitly")
         
-        # Menampilkan tanggal
-        st.metric(label="Tanggal", value=tanggal_dipilih.strftime('%Y-%m-%d'))
-    
-        # Menyaring data untuk sepuluh hari terakhir
-        df_10_hari = df[(df['Tanggal'] >= tanggal_awal) & (df['Tanggal'] <= tanggal_akhir)]
-        
-        # Menghitung rata-rata untuk sepuluh hari terakhir
-        nilai_pln_rata2 = df_10_hari['PLN Meter'].mean()
-        nilai_apf_rata2 = df_10_hari['APF Meter (ION)'].mean()
-        nilai_Sum_APF_rata2 = df_10_hari['SUM ALL APF Area'].mean()
-        nilai_ems_rata2 = df_10_hari['EMS'].mean()
-    
-         # Menampilkan data sesuai dengan tanggal yang dipilih
-        nilai_pln = float(df.loc[df['Tanggal'] == tanggal_dipilih, 'PLN Meter'].values[0])
-        nilai_apf = float(df.loc[df['Tanggal'] == tanggal_dipilih, 'APF Meter (ION)'].values[0])
-        nilai_Sum_APF = float(df.loc[df['Tanggal'] == tanggal_dipilih, 'SUM ALL APF Area'].values[0])
-        nilai_ems = float(df.loc[df['Tanggal'] == tanggal_dipilih, 'EMS'].values[0])
-        
-        # Mencari nilai untuk satu hari sebelum tanggal_dipilih
-        tanggal_sebelumnya = tanggal_dipilih - pd.Timedelta(days=1)
-        nilai_pln_sebelumnya = float(df.loc[df['Tanggal'] == tanggal_sebelumnya, 'PLN Meter'].values[0])
-        nilai_apf_sebelumnya = float(df.loc[df['Tanggal'] == tanggal_sebelumnya, 'APF Meter (ION)'].values[0])
-        nilai_Sum_APF_sebelumnya = float(df.loc[df['Tanggal'] == tanggal_sebelumnya, 'SUM ALL APF Area'].values[0])
-        nilai_ems_sebelumnya = float(df.loc[df['Tanggal'] == tanggal_sebelumnya, 'EMS'].values[0])
-        
-        #mencari delta value
-        delta_PLN = round(nilai_pln - nilai_pln_sebelumnya, 2)
-        delta_APF = round(nilai_apf - nilai_apf_sebelumnya, 2)
-        delta_Sum_APF = round(nilai_Sum_APF - nilai_Sum_APF_sebelumnya, 2)
-        delta_ems = round(nilai_ems - nilai_ems_sebelumnya, 2)
+        # Hitung data-data yang dibutuhkan untuk ditampilkan
+        elec_df_10_hari, elec_dict_rata2, elec_dict_data_tanggal, elec_dict_data_tanggal_sebelumnya, elec_dict_delta = hitungDataDitampilkan(elec_df, tanggal_awal, tanggal_akhir)
         
         # add a border
         st.markdown("""<hr style="border:1px solid gray">""", unsafe_allow_html=True)
         # Subjudul
-        st.markdown('## Pemakaian Listrik APF Total')
-        st.markdown('Berdasarkan pencatatan kWhmeter di GI PLN, GI APF dan Total Pemakaian Seluruh Plant')
+        st.markdown('## Total Electricity Consumption')
+        st.markdown('Based on kWhmeter recording at GI PLN, GI APF and Total Plant recording, showing daily consumption and 10-day average.')
     
         col1, col2, col3, col4 = st.columns(4)
         with col1:
-            st.metric(label='PLN Meter', value=nilai_pln, delta = delta_PLN)
+            st.metric(label='PLN Meter', value=elec_dict_data_tanggal['PLN Meter'], delta = elec_dict_delta['PLN Meter'])
         with col2:
-            st.metric(label='APF Meter (ION)', value=nilai_apf, delta = delta_APF)
+            st.metric(label='APF Meter (ION)', value=elec_dict_data_tanggal['APF Meter (ION)'], delta = elec_dict_delta['APF Meter (ION)'])
         with col3:
-            st.metric(label='Sum ALL APF Area', value=nilai_Sum_APF, delta = delta_Sum_APF)
+            st.metric(label='SUM ALL APF Area', value=elec_dict_data_tanggal['SUM ALL APF Area'], delta = elec_dict_delta['SUM ALL APF Area'])
         with col4:
-            st.metric(label='EMS', value=nilai_ems, delta = delta_ems)
+            st.metric(label='EMS', value=elec_dict_data_tanggal['EMS'], delta = elec_dict_delta['EMS'])
         
         col1, col2, col3, col4 = st.columns(4)
         with col1:
-            st.metric(label='PLN Meter Rata-rata (10 hari)', value=round(nilai_pln_rata2, 2))
+            st.metric(label='Avg PLN Meter', value=elec_dict_rata2['PLN Meter'])
         with col2:
-            st.metric(label='APF Meter (ION) Rata-rata (10 hari)', value=round(nilai_apf_rata2, 2))
+            st.metric(label='Avg APF Meter (ION)', value=elec_dict_rata2['APF Meter (ION)'])
         with col3:
-            st.metric(label='Sum ALL APF Area Rata-rata (10 hari)', value=round(nilai_Sum_APF_rata2, 2))
+            st.metric(label='Avg SUM ALL APF Area', value=elec_dict_rata2['SUM ALL APF Area'])
         with col4:
-            st.metric(label='EMS Rata-rata (10 hari)', value=round(nilai_ems_rata2, 2))
-    
-        with st.expander("Klik untuk melihat grafik pemakaian listrik"):
+            st.metric(label='Avg EMS', value=elec_dict_rata2['EMS'])
+  
+        with st.expander("Click to open electricity consumption chart for 10 days"):
             tab1, tab2, tab3, tab4 = st.tabs(["PLN Meter","ION Meter","APF Sum","EMS"])
             with tab1:
-                buat_grafik_kwh('PLN Meter', nilai_pln_rata2, 'Konsumsi listrik berdasar kWhmeter PLN dalam 10 hari terakhir')
+                buat_grafik_kwh(elec_df_10_hari, 'PLN Meter', elec_dict_rata2['PLN Meter'], 'Electrical Consumption Based on PLN KWhmeter')
             with tab2:
-                buat_grafik_kwh('APF Meter (ION)', nilai_apf_rata2, 'Konsumsi listrik berdasar kWhmeter APF dalam 10 hari terakhir')
+                buat_grafik_kwh(elec_df_10_hari, 'APF Meter (ION)', elec_dict_rata2['APF Meter (ION)'], 'Electrical Consumption Based on APF KWhmeter')
             with tab3:
-                buat_grafik_kwh('SUM ALL APF Area', nilai_Sum_APF_rata2, 'Jumlah Pemakaian Listrik Seluruh Plant dalam 10 hari terakhir')
+                buat_grafik_kwh(elec_df_10_hari, 'SUM ALL APF Area', elec_dict_rata2['SUM ALL APF Area'], 'Electrical Consumption Based on All Plants Total Reading')
             with tab4:
-                buat_grafik_kwh('EMS', nilai_ems_rata2, 'Konsumsi listrik berdasar EMS dalam 10 hari terakhir')
-    
-    
-        # Memilih nilai tertinggi dari kolom 'Tanggal'
-        tanggal_tertinggi = df['Tanggal'].max()
-    
+                buat_grafik_kwh(elec_df_10_hari, 'EMS', elec_dict_rata2['EMS'], 'Electrical Consumption Based on EMS')
+
         # add a border
         st.markdown("""<hr style="border:1px solid gray">""", unsafe_allow_html=True)
-    
-        # Subjudul
-        st.markdown('## Pemakaian listrik masing-masing plant')
-        st.markdown('Berdasarkan pencatatan kWhmeter di masing-masing plant')
-    
-        # Menghitung rata-rata untuk sepuluh hari terakhir
-        nilai_poy_rata2 = df_10_hari['POY'].mean()
-        nilai_pp_rata2 = df_10_hari['PP'].mean()
-        nilai_tx1_rata2 = df_10_hari['TX 1'].mean()
-        nilai_tx2_rata2 = df_10_hari['TX 2'].mean()
-        nilai_tx3_rata2 = df_10_hari['TX 3'].mean()
-        nilai_tx4_rata2 = df_10_hari['TX 4 (+Doubling)'].mean()
-        nilai_wrp_rata2 = df_10_hari['WRP'].mean()
-        nilai_sp3_rata2 = df_10_hari['SP3 Compressor'].mean()
-        nilai_tx2c_rata2 = df_10_hari['TX 2 Compressor'].mean()
-    
-         # Menampilkan data sesuai dengan tanggal yang dipilih
-        nilai_poy = float(df.loc[df['Tanggal'] == tanggal_dipilih, 'POY'].values[0])
-        nilai_pp = float(df.loc[df['Tanggal'] == tanggal_dipilih, 'PP'].values[0])
-        nilai_tx1 = float(df.loc[df['Tanggal'] == tanggal_dipilih, 'TX 1'].values[0])
-        nilai_tx2 = float(df.loc[df['Tanggal'] == tanggal_dipilih, 'TX 2'].values[0])
-        nilai_tx3 = float(df.loc[df['Tanggal'] == tanggal_dipilih, 'TX 3'].values[0])
-        nilai_tx4 = float(df.loc[df['Tanggal'] == tanggal_dipilih, 'TX 4 (+Doubling)'].values[0])
-        nilai_wrp = float(df.loc[df['Tanggal'] == tanggal_dipilih, 'WRP'].values[0])
-        nilai_sp3 = float(df.loc[df['Tanggal'] == tanggal_dipilih, 'SP3 Compressor'].values[0])
-        nilai_tx2c = float(df.loc[df['Tanggal'] == tanggal_dipilih, 'TX 2 Compressor'].values[0])
+        # SUB JUDUL
+        st.markdown('## Plant Electricity consumption')
+        st.markdown('Based on kWhmeter recording in each plant, showing daily consumption and 10-day average.')
+
+        # PIE CHART PEMAKAIAN LISTRIK PER PLANT
+        # Key yang ingin di-drop
+        keys_to_drop = ['EMS', 'SUM ALL APF Area', 'APF Meter (ION)', 'PLN Meter']
         
-        # Mencari nilai untuk satu hari sebelum tanggal_dipilih
-        nilai_poy_sebelumnya = float(df.loc[df['Tanggal'] == tanggal_sebelumnya, 'POY'].values[0])
-        nilai_pp_sebelumnya = float(df.loc[df['Tanggal'] == tanggal_sebelumnya, 'PP'].values[0])
-        nilai_tx1_sebelumnya = float(df.loc[df['Tanggal'] == tanggal_sebelumnya, 'TX 1'].values[0])
-        nilai_tx2_sebelumnya = float(df.loc[df['Tanggal'] == tanggal_sebelumnya, 'TX 2'].values[0])
-        nilai_tx3_sebelumnya = float(df.loc[df['Tanggal'] == tanggal_sebelumnya, 'TX 3'].values[0])
-        nilai_tx4_sebelumnya = float(df.loc[df['Tanggal'] == tanggal_sebelumnya, 'TX 4 (+Doubling)'].values[0])
-        nilai_wrp_sebelumnya = float(df.loc[df['Tanggal'] == tanggal_sebelumnya, 'WRP'].values[0])
-        nilai_sp3_sebelumnya = float(df.loc[df['Tanggal'] == tanggal_sebelumnya, 'SP3 Compressor'].values[0])
-        nilai_tx2c_sebelumnya = float(df.loc[df['Tanggal'] == tanggal_sebelumnya, 'TX 2 Compressor'].values[0])
+        # Menggunakan dictionary comprehension untuk membuat dictionary baru tanpa key yang di-drop
+        filtered_dict = {key: value for key, value in elec_dict_data_tanggal.items() if key not in keys_to_drop}
+
+        # Ekstrak label dan nilai dari dictionary
+        labels = list(filtered_dict.keys())
+        values = list(filtered_dict.values())
         
-        #mencari delta value
-        delta_poy = round(nilai_poy - nilai_poy_sebelumnya, 2)
-        delta_pp = round(nilai_pp - nilai_pp_sebelumnya, 2)
-        delta_tx1 = round(nilai_tx1 - nilai_tx1_sebelumnya, 2)
-        delta_tx2 = round(nilai_tx2 - nilai_tx2_sebelumnya, 2)
-        delta_tx3 = round(nilai_tx3 - nilai_tx3_sebelumnya, 2)
-        delta_tx4 = round(nilai_tx4 - nilai_tx4_sebelumnya, 2)
-        delta_wrp = round(nilai_wrp - nilai_wrp_sebelumnya, 2)
-        delta_sp3 = round(nilai_sp3 - nilai_sp3_sebelumnya, 2)
-        delta_tx2c = round(nilai_tx2c - nilai_tx2c_sebelumnya, 2)
+        # Buat pie chart menggunakan Matplotlib
+        fig, ax = plt.subplots()
+        ax.pie(values, labels=labels, autopct='%1.1f%%',colors = ['lightblue', 'lightgreen', 'lightcoral', 'gold', 'violet', 'turquoise', 'lime', 'orange', 'plum'])
+        #ax.set_title('Electricity Consumption by Plants')
         
+        # Tampilkan pie chart di Streamlit
+        st.pyplot(fig)
+
         col1, col2 = st.columns(2)
         with col1:
-            st.metric(label='POY Plant', value=nilai_poy, delta = delta_poy)
+            st.metric(label='POY', value=elec_dict_data_tanggal['POY'], delta = elec_dict_delta['POY'])
         with col2:
-            st.metric(label='PP Plant', value=nilai_pp, delta = delta_pp)
+            st.metric(label='PP', value=elec_dict_data_tanggal['PP'], delta = elec_dict_delta['PP'])
     
         col1, col2 = st.columns(2)
         with col1:
-            st.metric(label='POY Plant Rata-rata (10 hari)', value=round(nilai_poy_rata2, 2))
+            st.metric(label='Avg POY', value=elec_dict_rata2['POY'])
         with col2:
-            st.metric(label='PP Plant Rata-rata (10 hari)', value=round(nilai_pp_rata2, 2))
-    
+            st.metric(label='Avg PP', value=elec_dict_rata2['PP'])
         
         # add a border
         st.markdown("""<hr style="border:1px dashed gray">""", unsafe_allow_html=True)
         
         col1, col2, col3, col4 = st.columns(4)
         with col1:
-            st.metric(label='TX 1 Plant', value=nilai_tx1, delta = delta_tx1)
+            st.metric(label='TX 1', value=elec_dict_data_tanggal['TX 1'], delta = elec_dict_delta['TX 1'])
         with col2:
-            st.metric(label='TX 2 Plant', value=nilai_tx2, delta = delta_tx2)
+            st.metric(label='TX 2', value=elec_dict_data_tanggal['TX 2'], delta = elec_dict_delta['TX 2'])
         with col3:
-            st.metric(label='TX 3 Plant', value=nilai_tx3, delta = delta_tx3)
+            st.metric(label='TX 3', value=elec_dict_data_tanggal['TX 3'], delta = elec_dict_delta['TX 3'])
         with col4:
-            st.metric(label='TX 4 & Doubling Plant', value=nilai_tx4, delta = delta_tx4)
+            st.metric(label='TX 4 & Doubling Plant', value=elec_dict_data_tanggal['TX 4 (+Doubling)'], delta = elec_dict_delta['TX 4 (+Doubling)'])
     
         col1, col2, col3, col4 = st.columns(4)
         with col1:
-            st.metric(label='TX1 Plant Rata-rata (10 hari)', value=round(nilai_tx1_rata2, 2))
+            st.metric(label='Avg TX1 Plant', value=elec_dict_rata2['TX 1'])
         with col2:
-            st.metric(label='TX2 Plant Rata-rata (10 hari)', value=round(nilai_tx2_rata2, 2))
+            st.metric(label='Avg TX2 Plant', value=elec_dict_rata2['TX 2'])
         with col3:
-            st.metric(label='TX3 Plant Rata-rata (10 hari)', value=round(nilai_tx3_rata2, 2))
+            st.metric(label='Avg TX3 Plant', value=elec_dict_rata2['TX 3'])
         with col4:
-            st.metric(label='TX4 & Doubling Plant Rata-rata (10 hari)', value=round(nilai_tx4_rata2, 2))
+            st.metric(label='Avg TX4 & DoublingPlant', value=elec_dict_rata2['TX 4 (+Doubling)'])
         
         # add a border
         st.markdown("""<hr style="border:1px dashed gray">""", unsafe_allow_html=True)
     
         col1, col2, col3 = st.columns(3)
         with col1:
-            st.metric(label='WRP', value=nilai_wrp, delta = delta_wrp)
+            st.metric(label='WRP', value=elec_dict_data_tanggal['WRP'], delta = elec_dict_delta['WRP'])
         with col2:
-            st.metric(label='SP3 Compressor', value=nilai_sp3, delta = delta_sp3)
+            st.metric(label='SP3 Compressor', value=elec_dict_data_tanggal['SP3 Compressor'], delta = elec_dict_delta['SP3 Compressor'])
         with col3:
-            st.metric(label='TX2 Compressor', value=nilai_tx2c, delta = delta_tx2c)
+            st.metric(label='TX 2 Compressor', value=elec_dict_data_tanggal['TX 2 Compressor'], delta = elec_dict_delta['TX 2 Compressor'])
     
         col1, col2, col3 = st.columns(3)
         with col1:
-            st.metric(label='WRP Plant Rata-rata (10 hari)', value=round(nilai_wrp_rata2, 2))
+            st.metric(label='Avg WRP', value=elec_dict_rata2['WRP'])
         with col2:
-            st.metric(label='SP3 Compressor Rata-rata (10 hari)', value=round(nilai_sp3_rata2, 2))
+            st.metric(label='Avg SP3 Compressor', value=elec_dict_rata2['SP3 Compressor'])
         with col3:
-            st.metric(label='TX2 Compressor Rata-rata (10 hari)', value=round(nilai_tx2c_rata2, 2))
+            st.metric(label='Avg TX 2 Compressor', value=elec_dict_rata2['TX 2 Compressor'])
     
-        with st.expander("Klik untuk melihat grafik pemakaian listrik"):
+        with st.expander("Click to open electricity consumption chart for 10 days"):
             tabPOY, tabPP, tabTX1, tabTX2, tabTX3, tabTX4, tabWRP, tabSP3, tabTX2C = st.tabs(["POY", "PP", "TX1", "TX2", "TX3", "TX4", "WRP", "SP3 Comp", "TX2 Comp"])
             with tabPOY:
-                buat_grafik_kwh('POY', nilai_poy_rata2, 'Konsumsi listrik Plant POY dalam 10 hari terakhir')
+                buat_grafik_kwh(elec_df_10_hari, 'POY', elec_dict_rata2['POY'], 'POY Electrical Consumption')
             with tabPP:
-                buat_grafik_kwh('PP', nilai_pp_rata2, 'Konsumsi listrik Plant PP dalam 10 hari terakhir')
+                buat_grafik_kwh(elec_df_10_hari, 'PP', elec_dict_rata2['POY'], 'PP Electrical Consumption')
             with tabTX1:
-                buat_grafik_kwh('TX 1', nilai_tx1_rata2, 'Konsumsi listrik Plant TX 1 dalam 10 hari terakhir')
+                buat_grafik_kwh(elec_df_10_hari, 'TX 1', elec_dict_rata2['TX 1'], 'TX 1 Electrical Consumption')
             with tabTX2:
-                buat_grafik_kwh('TX 2', nilai_tx2_rata2, 'Konsumsi listrik Plant TX 2 dalam 10 hari terakhir')
+                buat_grafik_kwh(elec_df_10_hari, 'TX 2', elec_dict_rata2['TX 2'], 'TX 2 Electrical Consumption')
             with tabTX3:
-                buat_grafik_kwh('TX 3', nilai_tx3_rata2, 'Konsumsi listrik Plant TX 3 dalam 10 hari terakhir')
+                buat_grafik_kwh(elec_df_10_hari, 'TX 3', elec_dict_rata2['TX 3'], 'TX 3 Electrical Consumption')
             with tabTX4:
-                buat_grafik_kwh('TX 4 (+Doubling)', nilai_tx4_rata2, 'Konsumsi listrik Plant TX 4 dalam 10 hari terakhir')
+                buat_grafik_kwh(elec_df_10_hari, 'TX 4 (+Doubling)', elec_dict_rata2['TX 4 (+Doubling)'], 'TX 4 & Doubling Electrical Consumption')
             with tabWRP:
-                buat_grafik_kwh('WRP', nilai_wrp_rata2, 'Konsumsi listrik Recycling Plant dalam 10 hari terakhir')
+                buat_grafik_kwh(elec_df_10_hari, 'WRP', elec_dict_rata2['WRP'], 'WRP Electrical Consumption')
             with tabSP3:
-                buat_grafik_kwh('SP3 Compressor', nilai_sp3_rata2, 'Konsumsi listrik Compressor SP3  dalam 10 hari terakhir')
+                buat_grafik_kwh(elec_df_10_hari, 'SP3 Compressor', elec_dict_rata2['SP3 Compressor'], 'SP3 Compressor Electrical Consumption')
             with tabTX2C:
-                buat_grafik_kwh('TX 2 Compressor', nilai_tx2c_rata2, 'Konsumsi listrik Compressor TX 2  dalam 10 hari terakhir')
+                buat_grafik_kwh(elec_df_10_hari, 'TX 2 Compressor', elec_dict_rata2['TX 2 Compressor'], 'TX 2 Compressor Electrical Consumption')
     
         
         # add a border
         st.markdown("""<hr style="border:1px solid gray">""", unsafe_allow_html=True)
     
-        st.write(df)
+        st.write(elec_df)
 
+    #######################
+    # TAB PRODUCT
+    #######################
+    with tabProduct:
+        col1, col2 = st.columns([3,1])
+        with col1:
+            st.markdown("## Daily Production Dashboard")
+        with col2:    
+            # Menampilkan tanggal
+            st.metric(label="Date", value=tanggal_dipilih.strftime('%d-%m-%Y'))
+
+        st.markdown("Values are shown in MT (Metric Tonnes), unless it is stated differently explicitly")
+        
+        # Hitung data-data yang dibutuhkan untuk ditampilkan
+        prod_df_10_hari, prod_dict_rata2, prod_dict_data_tanggal, prod_dict_data_tanggal_sebelumnya, prod_dict_delta = hitungDataDitampilkan(prod_df, tanggal_awal, tanggal_akhir)
+        
+        # add a border
+        st.markdown("""<hr style="border:1px solid gray">""", unsafe_allow_html=True)
+        # Subjudul
+        st.markdown('## Marketable Production')
+        #st.markdown('??? NOTE ???')
+        col1, col2 = st.columns([1,3])
+        with col1:
+            st.metric(label='Marketable', value=prod_dict_data_tanggal['Marketable'], delta = prod_dict_delta['Marketable'])
+            st.metric(label='Avg Marketable', value=prod_dict_rata2['Marketable'])
+        with col2:
+            buat_grafik_kwh(prod_df_10_hari, 'Marketable', prod_dict_rata2['Marketable'], 'Marketable Production', axis_limit = 0.1)
+        
+        # add a border
+        st.markdown("""<hr style="border:1px solid gray">""", unsafe_allow_html=True)
+
+        # Subjudul
+        st.markdown('## Plant Production')
+        #st.markdown('??? NOTE ???')
+
+        # PIE CHART PRODUKSI PER PLANT
+        # Key yang ingin di-drop
+        keys_to_drop = ['T3 (In house POY)', 'T3 (Outsource POY)', 'T4 (In house POY)', 'T4 (Outsource POY)','Total','Marketable', 'M2', 'T1']
+        
+        # Menggunakan dictionary comprehension untuk membuat dictionary baru tanpa key yang di-drop
+        filtered_dict = {key: value for key, value in prod_dict_data_tanggal.items() if key not in keys_to_drop}
+
+        # Ekstrak label dan nilai dari dictionary
+        labels = list(filtered_dict.keys())
+        values = list(filtered_dict.values())
+        
+        # Buat pie chart menggunakan Matplotlib
+        fig, ax = plt.subplots()
+        #ax.pie(values, labels=labels, autopct='%1.1f%%',colors = ['lightblue', 'lightgreen', 'lightcoral', 'gold', 'violet', 'turquoise', 'lime', 'orange', 'plum'])
+        ax.pie(values, labels=labels, autopct='%1.1f%%')
+        #ax.set_title('Production by Plants')
+        
+        # Tampilkan pie chart di Streamlit
+        st.pyplot(fig)
+
+        
+        col1, col2, col3, col4 = st.columns(4)
+        with col1:
+            st.metric(label='SP4 Plant', value=prod_dict_data_tanggal['SP4'], delta = prod_dict_delta['SP4'])
+        with col2:
+            st.metric(label='PP Plant', value=prod_dict_data_tanggal['M1'], delta = prod_dict_delta['M1'])
+        with col3:
+            st.metric(label='TX 1 Plant', value=prod_dict_data_tanggal['T1'], delta = prod_dict_delta['T1'])
+        with col4:
+            st.metric(label='TX 2 Plant', value=prod_dict_data_tanggal['T2'], delta = prod_dict_delta['T2'])
+
+        col1, col2, col3, col4 = st.columns(4)
+        with col1:
+            st.metric(label='Avg SP4 Plant', value=prod_dict_rata2['SP4'])
+        with col2:
+            st.metric(label='Avg PP Plant', value=prod_dict_rata2['M1'])
+        with col3:
+            st.metric(label='Avg TX 1 Plant', value=prod_dict_rata2['T1'])
+        with col4:
+            st.metric(label='Avg TX 2 Plant', value=prod_dict_rata2['T2'])
+
+        # add a border
+        st.markdown("""<hr style="border:1px dash gray">""", unsafe_allow_html=True)
+
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.metric(label='TX 3 Plant', value=prod_dict_data_tanggal['T3'], delta = prod_dict_delta['T3'])
+        with col2:
+            st.metric(label='TX 4 Plant', value=prod_dict_data_tanggal['T4'], delta = prod_dict_delta['T4'])
+        with col3:
+            st.metric(label='Doubling Plant', value=prod_dict_data_tanggal['DBL'], delta = prod_dict_delta['DBL'])
+
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.metric(label='Avg TX 3 Plant', value=prod_dict_rata2['T3'])
+        with col2:
+            st.metric(label='Avg TX 4 Plant', value=prod_dict_rata2['T4'])
+        with col3:
+            st.metric(label='Avg Doubling Plant', value=prod_dict_rata2['DBL'])
+
+        with st.expander("Click to open electricity consumption chart for 10 days"):
+            tabPOY, tabPP, tabTX1, tabTX2, tabTX3, tabTX4, tabDBL = st.tabs(["POY", "PP", "TX1", "TX2", "TX3", "TX4", "DBL"])
+            with tabPOY:
+                buat_grafik_kwh(prod_df_10_hari, 'SP4', prod_dict_rata2['SP4'], 'SP 4 Plant')
+            with tabPP:
+                buat_grafik_kwh(prod_df_10_hari, 'M1', prod_dict_rata2['M1'], 'PP Plant')
+            with tabTX1:
+                buat_grafik_kwh(prod_df_10_hari, 'T1', prod_dict_rata2['T1'], 'TX 1 Plant')
+            with tabTX2:
+                buat_grafik_kwh(prod_df_10_hari, 'T2', prod_dict_rata2['T2'], 'TX 2 Plant')
+            with tabTX3:
+                buat_grafik_kwh(prod_df_10_hari, 'T3', prod_dict_rata2['T3'], 'TX 3 Plant')
+            with tabTX4:
+                buat_grafik_kwh(prod_df_10_hari, 'T4', prod_dict_rata2['T4'], 'TX 4 Plant')
+            with tabDBL:
+                buat_grafik_kwh(prod_df_10_hari, 'DBL', prod_dict_rata2['DBL'], 'Doubling Plant')
+
+        # add a border
+        st.markdown("""<hr style="border:1px solid gray">""", unsafe_allow_html=True)
+        
+        st.write(prod_df)
 
 else:
-    st.markdown('#### Anda tidak memiliki otorisasi untuk melihat halaman ini!')
+    # Welcome greeting
+    st.markdown("Welcome Guest. ")
+    st.markdown('#### You are not authorized to view the webpage. Please login first!')
 
 # Add a footer or caption at the bottom of the app
 st.markdown("""<hr style="border:1px solid gray">""", unsafe_allow_html=True)
