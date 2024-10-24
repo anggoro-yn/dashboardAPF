@@ -157,6 +157,8 @@ dict_name = {'anggoro' : 'Anggoro Yudho Nuswantoro' ,'rahul': 'Rahul Bankar','si
 
 # Menset page layout
 #st.set_page_config(layout="wide")
+st.set_page_config(page_title="APF Dahsboard")
+
 
 #################################
 # SIDE BAR
@@ -290,18 +292,23 @@ if admin_user or general_user:
         # Menggunakan dictionary comprehension untuk membuat dictionary baru tanpa key yang di-drop
         filtered_dict = {key: value for key, value in elec_dict_data_tanggal.items() if key not in keys_to_drop}
 
-        # Ekstrak label dan nilai dari dictionary
-        labels = list(filtered_dict.keys())
-        values = list(filtered_dict.values())
-        
-        # Buat pie chart menggunakan Matplotlib
-        fig, ax = plt.subplots()
-        ax.pie(values, labels=labels, autopct='%1.1f%%',colors = ['lightblue', 'lightgreen', 'lightcoral', 'gold', 'violet', 'turquoise', 'lime', 'orange', 'plum'])
-        #ax.set_title('Electricity Consumption by Plants')
-        
-        # Tampilkan pie chart di Streamlit
-        st.pyplot(fig)
+        is_all_zero = all(value == 0 for value in filtered_dict.values())
 
+        if is_all_zero:
+            pass
+        else:
+            # Ekstrak label dan nilai dari dictionary
+            labels = list(filtered_dict.keys())
+            values = list(filtered_dict.values())
+            
+            # Buat pie chart menggunakan Matplotlib
+            fig, ax = plt.subplots()
+            ax.pie(values, labels=labels, autopct='%1.1f%%',colors = ['lightblue', 'lightgreen', 'lightcoral', 'gold', 'violet', 'turquoise', 'lime', 'orange', 'plum'])
+            #ax.set_title('Electricity Consumption by Plants')
+            
+            # Tampilkan pie chart di Streamlit
+            st.pyplot(fig)
+    
         col1, col2 = st.columns(2)
         with col1:
             st.metric(label='POY', value=elec_dict_data_tanggal['POY'], delta = elec_dict_delta['POY'])
@@ -425,18 +432,23 @@ if admin_user or general_user:
         # Menggunakan dictionary comprehension untuk membuat dictionary baru tanpa key yang di-drop
         filtered_dict = {key: value for key, value in prod_dict_data_tanggal.items() if key not in keys_to_drop}
 
-        # Ekstrak label dan nilai dari dictionary
-        labels = list(filtered_dict.keys())
-        values = list(filtered_dict.values())
-        
-        # Buat pie chart menggunakan Matplotlib
-        fig, ax = plt.subplots()
-        #ax.pie(values, labels=labels, autopct='%1.1f%%',colors = ['lightblue', 'lightgreen', 'lightcoral', 'gold', 'violet', 'turquoise', 'lime', 'orange', 'plum'])
-        ax.pie(values, labels=labels, autopct='%1.1f%%')
-        #ax.set_title('Production by Plants')
-        
-        # Tampilkan pie chart di Streamlit
-        st.pyplot(fig)
+        is_all_zero = all(value == 0 for value in filtered_dict.values())
+
+        if is_all_zero:
+            pass
+        else:
+            # Ekstrak label dan nilai dari dictionary
+            labels = list(filtered_dict.keys())
+            values = list(filtered_dict.values())
+            
+            # Buat pie chart menggunakan Matplotlib
+            fig, ax = plt.subplots()
+            #ax.pie(values, labels=labels, autopct='%1.1f%%',colors = ['lightblue', 'lightgreen', 'lightcoral', 'gold', 'violet', 'turquoise', 'lime', 'orange', 'plum'])
+            ax.pie(values, labels=labels, autopct='%1.1f%%')
+            #ax.set_title('Production by Plants')
+            
+            # Tampilkan pie chart di Streamlit
+            st.pyplot(fig)
 
         
         col1, col2, col3, col4 = st.columns(4)
