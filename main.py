@@ -224,7 +224,7 @@ if admin_user or general_user:
     tanggal_akhir = tanggal_dipilih
 
     # Tab untuk memilih dashboard
-    tabElec, tabProduct  = st.tabs(["Electricity", "Product"])
+    tabElec, tabProduct  = st.tabs(["Electricity", "Production"])
 
     #######################
     # TAB ELEC
